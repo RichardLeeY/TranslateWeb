@@ -1,0 +1,16 @@
+{
+  "name": "translate-web",
+  "version": "1.0.0",
+  "description": "Multilingual news website using AWS Translate",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server public -p 8080",
+    "deploy": "cd cdk-translate-web && npm run build && cdk deploy"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1550.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

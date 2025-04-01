@@ -1,0 +1,234 @@
+* {
+.diff-highlight {
+    background-color: #ffeb3b;
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: bold;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Add a subtle animation to make differences more noticeable */
+@keyframes highlight-pulse {
+    0% { background-color: #ffeb3b; }
+    50% { background-color: #fff176; }
+    100% { background-color: #ffeb3b; }
+}
+
+.diff-highlight {
+    animation: highlight-pulse 2s infinite;
+}    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f4f4f4;
+}
+
+.container {
+    width: 98%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+header {
+    background-color: #2c3e50;
+    color: #fff;
+    padding: 1rem 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+header h1 {
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.language-selector, .model-selector {
+    margin: 0.5rem 0;
+}
+
+.language-selector select, .model-selector select {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    font-size: 1rem;
+    min-width: 200px;
+    cursor: pointer;
+}
+
+main {
+    padding: 1.5rem 0;
+}
+
+.articles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin: 0 auto;
+    max-width: 1600px;
+    padding: 0 15px;
+}
+
+.article-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.article-header {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.article-header h2 {
+    color: #2c3e50;
+    margin-bottom: 0;
+    font-size: 1.8rem;
+}
+
+.article-date {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    display: block;
+}
+
+.article-columns {
+    display: flex;
+    flex-direction: row;
+}
+
+.article-column {
+    flex: 1;
+    padding: 1.5rem;
+    border-right: 1px solid #e9ecef;
+}
+
+.article-column:last-child {
+    border-right: none;
+}
+
+.article-column h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.article-column h4 {
+    color: #2c3e50;
+    margin: 1rem 0;
+    font-size: 1.4rem;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.article-column p {
+    line-height: 1.8;
+    font-size: 1.1rem;
+}
+
+.column-original {
+    background-color: #f8f9fa;
+}
+
+.column-model-a {
+    background-color: #fff;
+}
+
+.column-model-b {
+    background-color: #fff;
+}
+
+.model-badge {
+    font-size: 0.8rem;
+    background-color: #e9ecef;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: #495057;
+}
+
+.hidden {
+    display: none;
+}
+
+#loading {
+    text-align: center;
+    padding: 1rem;
+    font-size: 1.2rem;
+    color: #2c3e50;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 0 auto 1rem;
+    font-weight: bold;
+    position: sticky;
+    top: 70px;
+    z-index: 99;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    max-width: 1600px;
+}
+
+footer {
+    background-color: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: 2rem;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .article-columns {
+        flex-direction: column;
+    }
+    
+    .article-column {
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .article-column:last-child {
+        border-bottom: none;
+    }
+}
+
+@media (max-width: 992px) {
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .language-selector, .model-selector {
+        width: 100%;
+    }
+    
+    .language-selector select, .model-selector select {
+        width: 100%;
+    }
+    
+    .article-header h2 {
+        font-size: 1.5rem;
+    }
+}
