@@ -194,11 +194,23 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Using cached translation for ${cacheKey}`);
             modelHeading.textContent = translationCache[cacheKey].title;
             modelContent.innerHTML = translationCache[cacheKey].content;
+            
+            // Display cached translation time if available
+            if (translationCache[cacheKey].translationTime) {
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'translation-time';
+                timeSpan.textContent = `(${translationCache[cacheKey].translationTime}ms)`;
+                modelTitle.appendChild(timeSpan);
+            }
+            
             return;
         }
         
         try {
             console.log(`Translating article ${article.id} to ${targetLanguage} using ${model}`);
+            
+            // Record start time
+            const startTime = performance.now();
             
             // Call translation API
             const response = await fetch(config.apiEndpoint, {
@@ -222,7 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const data = await response.json();
-            console.log('Translation successful:', data);
+            
+            // Record end time and calculate duration
+            const endTime = performance.now();
+            const translationTime = Math.round(endTime - startTime);
+            
+            console.log(`Translation successful in ${translationTime}ms:`, data);
+            
+            // Add translation time to the result
+            data[0].translationTime = translationTime;
             
             // Cache the result
             translationCache[cacheKey] = data[0];
@@ -230,6 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Display translated content
             modelHeading.textContent = data[0].title;
             modelContent.innerHTML = data[0].content;
+            
+            // Display translation time
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'translation-time';
+            timeSpan.textContent = `(${translationTime}ms)`;
+            modelTitle.appendChild(timeSpan);
+            
         } catch (error) {
             console.error(`Translation error for article ${article.id}:`, error);
             modelHeading.textContent = 'Error translating title';
@@ -264,8 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to highlight differences between two texts
     function highlightDifferences(textA, textB) {
         // Remove any existing highlight spans
-        textA = textA.replace(/<span class="diff-highlight">|<\/span>/g, '');
-        textB = textB.replace(/<span class="diff-highlight">|<\/span>/g, '');
+        textA = textA.replace(/<span class="diff-highlight.*?">|<\/span>/g, '');
+        textB = textB.replace(/<span class="diff-highlight.*?">|<\/span>/g, '');
         
         // For CJK languages, we need to handle character-by-character comparison
         // Check if the text contains CJK characters
@@ -295,8 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Both texts have words at this position
                 if (wordsA[i] !== wordsB[i] && !wordsA[i].match(/^\s+$/) && !wordsB[i].match(/^\s+$/)) {
                     // Words differ and are not just whitespace
-                    resultA.push(`<span class="diff-highlight">${wordsA[i]}</span>`);
-                    resultB.push(`<span class="diff-highlight">${wordsB[i]}</span>`);
+                    // Determine if the translation is good or bad
+                    const qualityA = assessTranslationQuality(wordsA[i], wordsB[i], 'a');
+                    const qualityB = assessTranslationQuality(wordsB[i], wordsA[i], 'b');
+                    
+                    resultA.push(`<span class="diff-highlight-${qualityA}">${wordsA[i]}</span>`);
+                    resultB.push(`<span class="diff-highlight-${qualityB}">${wordsB[i]}</span>`);
                 } else {
                     // Words are the same or are whitespace
                     resultA.push(wordsA[i]);
@@ -304,10 +335,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (i < wordsA.length) {
                 // Only textA has a word at this position
-                resultA.push(`<span class="diff-highlight">${wordsA[i]}</span>`);
+                resultA.push(`<span class="diff-highlight-bad">${wordsA[i]}</span>`);
             } else {
                 // Only textB has a word at this position
-                resultB.push(`<span class="diff-highlight">${wordsB[i]}</span>`);
+                resultB.push(`<span class="diff-highlight-bad">${wordsB[i]}</span>`);
             }
         }
         
@@ -315,6 +346,43 @@ document.addEventListener('DOMContentLoaded', () => {
             textA: resultA.join(''),
             textB: resultB.join('')
         };
+    }
+    
+    // Function to assess translation quality
+    function assessTranslationQuality(word, comparisonWord, modelType) {
+        // Simple heuristics to determine if a translation is good or bad
+        
+        // 1. Check for untranslated text (if the word contains only Latin characters in CJK translation)
+        const isCJKTarget = document.getElementById('language-select').value.startsWith('zh') || 
+                           document.getElementById('language-select').value === 'ja';
+        
+        const containsOnlyLatin = /^[a-zA-Z0-9\s\p{P}]+$/u.test(word);
+        
+        if (isCJKTarget && containsOnlyLatin && word.length > 1) {
+            return 'bad'; // Untranslated text in CJK translation is bad
+        }
+        
+        // 2. Check for significant length differences (might indicate missing content)
+        const lengthRatio = word.length / comparisonWord.length;
+        if (lengthRatio < 0.5 || lengthRatio > 2) {
+            return 'bad'; // Significant length difference might indicate poor translation
+        }
+        
+        // 3. Check for special characters that might indicate poor translation
+        if (/[�]/.test(word)) {
+            return 'bad'; // Contains replacement characters
+        }
+        
+        // 4. Check for repeated characters that might indicate poor translation
+        if (word.length > 3) {
+            const repeatedChars = word.match(/(.)\1{2,}/g);
+            if (repeatedChars && repeatedChars.length > 0) {
+                return 'bad'; // Contains repeated characters
+            }
+        }
+        
+        // Default to good translation
+        return 'good';
     }
 
     // Add a favicon to prevent 404 errors

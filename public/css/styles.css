@@ -1,22 +1,5 @@
 * {
-.diff-highlight {
-    background-color: #ffeb3b;
-    padding: 0 2px;
-    border-radius: 3px;
-    font-weight: bold;
-    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
-}
-
-/* Add a subtle animation to make differences more noticeable */
-@keyframes highlight-pulse {
-    0% { background-color: #ffeb3b; }
-    50% { background-color: #fff176; }
-    100% { background-color: #ffeb3b; }
-}
-
-.diff-highlight {
-    animation: highlight-pulse 2s infinite;
-}    box-sizing: border-box;
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
@@ -196,6 +179,61 @@ footer {
     text-align: center;
     padding: 1rem 0;
     margin-top: 2rem;
+}
+
+/* Translation highlighting styles */
+.diff-highlight {
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: bold;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.diff-highlight-good {
+    background-color: #c8e6c9; /* Light green */
+    color: #2e7d32; /* Dark green */
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: bold;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.diff-highlight-bad {
+    background-color: #fff9c4; /* Light yellow */
+    color: #f57f17; /* Dark amber */
+    padding: 0 2px;
+    border-radius: 3px;
+    font-weight: bold;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Add subtle animations to make differences more noticeable */
+@keyframes highlight-good-pulse {
+    0% { background-color: #c8e6c9; }
+    50% { background-color: #a5d6a7; }
+    100% { background-color: #c8e6c9; }
+}
+
+@keyframes highlight-bad-pulse {
+    0% { background-color: #fff9c4; }
+    50% { background-color: #fff59d; }
+    100% { background-color: #fff9c4; }
+}
+
+.diff-highlight-good {
+    animation: highlight-good-pulse 2s infinite;
+}
+
+.diff-highlight-bad {
+    animation: highlight-bad-pulse 2s infinite;
+}
+
+/* Translation time display */
+.translation-time {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: 0.5rem;
+    font-style: italic;
 }
 
 /* Responsive design */
