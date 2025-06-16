@@ -1,7 +1,11 @@
 // Configuration
+// IMPORTANT: Update these values after deploying the backend
 const config = {
-    apiEndpoint: 'https://tic5ekgjyh.execute-api.us-east-1.amazonaws.com/prod/translate',
-    apiKey: 'xxx',
+    // Replace with your API Gateway endpoint URL
+    apiEndpoint: '',
+    // Replace with your API key (consider using environment variables in production)
+    apiKey: '',
+    // Supported languages for translation
     supportedLanguages: {
         'zh': '简体中文 (Simplified Chinese)',
         'zh-TW': '繁体中文 (Traditional Chinese)',
@@ -12,6 +16,7 @@ const config = {
         'ru': 'Русский (Russian)',
         'tr': 'Türkçe (Turkish)'
     },
+    // Available translation models
     languageModels: {
         'nova-micro': 'Nova Micro',
         'nova-lite': 'Nova Lite',
@@ -19,6 +24,11 @@ const config = {
         'claude-3.5-haiku': 'Claude 3.5 Haiku'
     }
 };
+
+// Check if configuration is set
+function isConfigured() {
+    return config.apiEndpoint && config.apiKey;
+}
 
 // Sample articles (in English)
 const articles = [
@@ -68,8 +78,35 @@ document.addEventListener('DOMContentLoaded', () => {
         modelSelectorA.addEventListener('change', handleLanguageOrModelChange);
         modelSelectorB.addEventListener('change', handleLanguageOrModelChange);
         
+        // Check if API is configured
+        if (!isConfigured()) {
+            showConfigurationWarning();
+            return;
+        }
+        
         // Initial translation
         translateAllArticles();
+    }
+    
+    // Show configuration warning if API details are not set
+    function showConfigurationWarning() {
+        const warningElement = document.createElement('div');
+        warningElement.className = 'config-warning';
+        warningElement.innerHTML = `
+            <h3>⚠️ Configuration Required</h3>
+            <p>Before using this application, you need to configure the API endpoint and API key.</p>
+            <p>Please update the <code>config</code> object in <code>public/js/app.js</code> with your API details.</p>
+            <ol>
+                <li>Open <code>public/js/app.js</code> in a code editor</li>
+                <li>Update the <code>apiEndpoint</code> with your API Gateway URL</li>
+                <li>Update the <code>apiKey</code> with your API key</li>
+                <li>Refresh this page</li>
+            </ol>
+            <p><strong>Note:</strong> In a production environment, consider using environment variables or a secure configuration service instead of hardcoding API keys.</p>
+        `;
+        
+        // Insert at the top of the articles container
+        articlesContainer.insertBefore(warningElement, articlesContainer.firstChild);
     }
 
     // Display all articles with comparison columns
@@ -200,7 +237,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log(`Translating article ${article.id} to ${targetLanguage} using ${model}`);
             
-            // Call translation API
+            // Validate input before sending to API
+            if (!article.title || !article.content) {
+                throw new Error('Invalid article data: missing title or content');
+            }
+            
+            if (!targetLanguage || !config.supportedLanguages[targetLanguage]) {
+                throw new Error('Invalid target language');
+            }
+            
+            if (!model || !config.languageModels[model]) {
+                throw new Error('Invalid translation model');
+            }
+            
+            // Call translation API with proper error handling
             const response = await fetch(config.apiEndpoint, {
                 method: 'POST',
                 headers: {
@@ -216,20 +266,34 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('API error response:', response.status, errorText);
-                throw new Error(`API error: ${response.status} - ${errorText}`);
+                let errorMessage = `API error: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    // If we can't parse the error as JSON, use the status text
+                    errorMessage = `API error: ${response.status} - ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
             
             const data = await response.json();
+            
+            // Validate response data
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error('Invalid API response format');
+            }
+            
             console.log('Translation successful:', data);
             
             // Cache the result
             translationCache[cacheKey] = data[0];
             
             // Display translated content
-            modelHeading.textContent = data[0].title;
-            modelContent.innerHTML = data[0].content;
+            modelHeading.textContent = data[0].title || 'Translation error';
+            modelContent.innerHTML = data[0].content || 'Error: No content returned';
         } catch (error) {
             console.error(`Translation error for article ${article.id}:`, error);
             modelHeading.textContent = 'Error translating title';
@@ -263,9 +327,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Function to highlight differences between two texts
     function highlightDifferences(textA, textB) {
+        // Sanitize inputs to prevent XSS
+        const sanitizeHTML = (text) => {
+            if (typeof text !== 'string') return '';
+            return text
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+        
         // Remove any existing highlight spans
-        textA = textA.replace(/<span class="diff-highlight">|<\/span>/g, '');
-        textB = textB.replace(/<span class="diff-highlight">|<\/span>/g, '');
+        textA = (textA || '').toString().replace(/<span class="diff-highlight">|<\/span>/g, '');
+        textB = (textB || '').toString().replace(/<span class="diff-highlight">|<\/span>/g, '');
+        
+        // Sanitize both texts
+        const sanitizedTextA = sanitizeHTML(textA);
+        const sanitizedTextB = sanitizeHTML(textB);
         
         // For CJK languages, we need to handle character-by-character comparison
         // Check if the text contains CJK characters
@@ -273,14 +351,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let wordsA, wordsB;
         
-        if (containsCJK(textA) || containsCJK(textB)) {
+        if (containsCJK(sanitizedTextA) || containsCJK(sanitizedTextB)) {
             // For CJK languages, split by character
-            wordsA = [...textA];
-            wordsB = [...textB];
+            wordsA = [...sanitizedTextA];
+            wordsB = [...sanitizedTextB];
         } else {
             // For other languages, split by word boundaries
-            wordsA = textA.split(/(\s+|\b)/).filter(Boolean);
-            wordsB = textB.split(/(\s+|\b)/).filter(Boolean);
+            wordsA = sanitizedTextA.split(/(\s+|\b)/).filter(Boolean);
+            wordsB = sanitizedTextB.split(/(\s+|\b)/).filter(Boolean);
         }
         
         // Initialize result arrays
