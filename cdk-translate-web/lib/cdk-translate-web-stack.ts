@@ -16,6 +16,15 @@ export class CdkTranslateWebStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       memorySize: 256, // Increased memory for AI models
       timeout: cdk.Duration.seconds(30), // Increased timeout for AI processing
+      // Add environment variables if needed
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        // Add other environment variables as needed
+      },
+      // Enable tracing for better debugging and monitoring
+      tracing: lambda.Tracing.ACTIVE,
+      // Configure reserved concurrency to prevent excessive scaling
+      reservedConcurrentExecutions: 10,
     });
 
     // Grant the Lambda function permission to use Amazon Bedrock
@@ -33,6 +42,18 @@ export class CdkTranslateWebStack extends cdk.Stack {
         'arn:aws:bedrock:*::foundation-model/amazon.nova-1-pro-20240201-v1:0'
       ],
     }));
+    
+    // Add CloudWatch logging permissions with least privilege
+    translateFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'logs:CreateLogGroup',
+        'logs:CreateLogStream',
+        'logs:PutLogEvents'
+      ],
+      resources: [
+        `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/lambda/${translateFunction.functionName}:*`
+      ],
+    }));
 
     // Create the API Gateway with CORS enabled
     const api = new apigateway.RestApi(this, 'TranslateApi', {
@@ -42,17 +63,24 @@ export class CdkTranslateWebStack extends cdk.Stack {
         stageName: 'prod',
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
         dataTraceEnabled: true,
+        // Enable CloudWatch metrics for monitoring
+        metricsEnabled: true,
       },
+      // Configure CORS with more restrictive settings
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
+        // In production, replace with specific origins
+        allowOrigins: ['http://localhost:8080', 'https://yourdomain.com'],
+        // Only allow necessary methods
+        allowMethods: ['POST', 'OPTIONS'],
+        // Only allow necessary headers
         allowHeaders: [
           'Content-Type',
-          'X-Amz-Date',
-          'Authorization',
           'X-Api-Key',
         ],
-        allowCredentials: true,
+        // Disable credentials for added security
+        allowCredentials: false,
+        // Set max age for CORS preflight cache
+        maxAge: cdk.Duration.seconds(300),
       },
     });
 
@@ -73,10 +101,12 @@ export class CdkTranslateWebStack extends cdk.Stack {
           stage: api.deploymentStage,
         },
       ],
+      // Set stricter quota limits
       quota: {
         limit: 1000,
         period: apigateway.Period.MONTH,
       },
+      // Set stricter throttling limits
       throttle: {
         rateLimit: 5,
         burstLimit: 10,
@@ -89,12 +119,51 @@ export class CdkTranslateWebStack extends cdk.Stack {
     // Create the /translate resource
     const translateResource = api.root.addResource('translate');
     
+    // Add request validation to ensure proper request format
+    const requestValidator = new apigateway.RequestValidator(this, 'TranslateRequestValidator', {
+      restApi: api,
+      validateRequestBody: true,
+      validateRequestParameters: true,
+    });
+    
+    // Define the request model for validation
+    const translateRequestModel = new apigateway.Model(this, 'TranslateRequestModel', {
+      restApi: api,
+      contentType: 'application/json',
+      modelName: 'TranslateRequestModel',
+      schema: {
+        type: apigateway.JsonSchemaType.OBJECT,
+        required: ['articles', 'targetLanguage'],
+        properties: {
+          articles: {
+            type: apigateway.JsonSchemaType.ARRAY,
+            items: {
+              type: apigateway.JsonSchemaType.OBJECT,
+              required: ['title', 'content'],
+              properties: {
+                id: { type: apigateway.JsonSchemaType.STRING },
+                title: { type: apigateway.JsonSchemaType.STRING },
+                content: { type: apigateway.JsonSchemaType.STRING },
+                date: { type: apigateway.JsonSchemaType.STRING },
+              }
+            }
+          },
+          targetLanguage: { type: apigateway.JsonSchemaType.STRING },
+          model: { type: apigateway.JsonSchemaType.STRING },
+        }
+      }
+    });
+    
     // Integration with the Lambda function
     const translateIntegration = new apigateway.LambdaIntegration(translateFunction);
     
-    // Add the POST method with API key required
+    // Add the POST method with API key required and request validation
     translateResource.addMethod('POST', translateIntegration, {
       apiKeyRequired: true,
+      requestValidator: requestValidator,
+      requestModels: {
+        'application/json': translateRequestModel
+      }
     });
 
     // Output the API endpoint URL and API key ID
